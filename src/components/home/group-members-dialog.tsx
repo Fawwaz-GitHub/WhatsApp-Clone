@@ -8,9 +8,20 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Badge } from "@/components/ui/badge"
 import { Crown } from "lucide-react";
+import { Conversation } from "@/store/chat-store";
+import { useQuery } from "convex/react";
+import { api } from "../../../convex/_generated/api";
 
-const GroupMembersDialog = () => {
+type GroupMembersDialogProps = {
+	selectedConversation: Conversation
+}
+
+const GroupMembersDialog = ({selectedConversation}: GroupMembersDialogProps) => {
+
+	const users = useQuery(api.users.getGroupMembers, { conversationId: selectedConversation._id })
+
 	return (
 		<Dialog>
 			<DialogTrigger>
@@ -38,7 +49,7 @@ const GroupMembersDialog = () => {
 											<h3 className='text-md font-medium'>
 												{user.name || user.email.split("@")[0]}
 											</h3>
-											{user.admin && <Crown size={16} className='text-yellow-400' />}
+											{(user._id === selectedConversation.admin) && <Badge>Admin</Badge>}
 										</div>
 									</div>
 								</div>
