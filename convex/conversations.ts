@@ -1,5 +1,5 @@
 import { ConvexError, v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const createConversation = mutation({
     args: {
@@ -43,6 +43,57 @@ export const createConversation = mutation({
         })
         
         return conversation;
+    }
+})
+
+export const getMyConversations = query({
+    args: {},
+    handler: async ( ctx, args) => {
+        const identity = await ctx.auth.getUserIdentity();
+        if(!identity) throw new ConvexError("Unauthorized!")
+
+        const user = await ctx.db
+            .query("users")
+            .withIndex("by_tokenIdentifier", e => e.eq("tokenIdentifier", identity.tokenIdentifier))
+            .unique();
+
+        if(!user) throw new ConvexError("User Not Found!")
+
+        const conversations = await ctx.db.query("conversations").collect();
+        
+        const myConversations = conversations.filter((c)=>{
+            return c.participants.includes(user._id);
+        });
+
+        const conversationWithDetails = await Promise.all(
+            myConversations.map( async ( conversation ) => {
+
+                let userDetails = {};
+                if(!conversation.isGroup){
+                    let otherOtherUserId = conversation.participants.find((id) => id !== user._id)
+                    let otherUserProfile = await ctx.db
+                        .query("users")
+                        .filter(q => q.eq(q.field("_id"), otherOtherUserId))
+                        .take(1)
+
+                    userDetails = otherUserProfile[0]
+                }
+
+                let lastMessage = await ctx.db
+                    .query("messages")
+                    .filter(q => q.eq(q.field("conversation"), conversation._id))
+                    .order("desc")
+                    .take(1)
+
+                return {
+                    ...userDetails,
+                    ...conversation,
+                    lastMessage: lastMessage[0] || null
+                }    
+            })
+        )
+
+        return conversationWithDetails;
     }
 })
 

@@ -16,5 +16,11 @@ export default defineSchema({
         groupName:  v.optional(v.string()),
         groupImage: v.optional(v.string()),
         admin: v.optional(v.id("users"))
-    })
+    }),
+    messages: defineTable({
+        conversation: v.id("conversations"),
+        sender: v.string(), // It must be id of user but we use ai later hence string
+        content: v.string(),
+        messageType: v.union(v.literal("text"), v.literal("image"), v.literal("video"))
+    }).index("by_conversation",["conversation"])
 })
